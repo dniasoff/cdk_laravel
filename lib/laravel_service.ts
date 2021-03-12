@@ -113,23 +113,12 @@ class LaravelService extends Stack {
     );
 
 
-    // Task Definitions
-    const nginxServiceTaskDefinition = new ecs.FargateTaskDefinition(
-      this,
-      "nginxTaskDef",
-      {
-        memoryLimitMiB: 128,
-        cpu: 256,
-        taskRole: taskrole,
-      }
-    );
-
     const laravelServiceTaskDefinition = new ecs.FargateTaskDefinition(
       this,
-      "LaravelTaskDef",
+      "laravelTaskDef",
       {
         memoryLimitMiB: 512,
-        cpu: 512,
+        cpu: 256,
         taskRole: taskrole,
       }
     );
@@ -159,24 +148,27 @@ class LaravelService extends Stack {
       streamPrefix: "laravelService",
     });
 
-     // Amazon ECR Repositories
-     const nginxServicerepo = ecr.Repository.fromRepositoryName(
+    // Amazon ECR Repositories
+    const nginxServicerepo = ecr.Repository.fromRepositoryName(
       this,
       "nginxServiceRepo",
-      "nginx-service"
+      "cdk_laravel/nginx"
     );
 
     const laravelServicerepo = ecr.Repository.fromRepositoryName(
       this,
       "laravelServiceRepo",
-      "laravel-service"
+      "cdk_laravel/laravel"
     );
 
     // Task Containers
-    const nginxServiceContainer = nginxServiceTaskDefinition.addContainer(
+    const nginxServiceContainer = laravelServiceTaskDefinition.addContainer(
       "nginxServiceContainer",
       {
-        image: ecs.ContainerImage.fromEcrRepository(nginxServicerepo),
+        image: ecs.ContainerImage.fromEcrRepository(
+          nginxServicerepo,
+          "latest"
+        ),
         logging: nginxServiceLogDriver,
       }
     );
@@ -184,31 +176,39 @@ class LaravelService extends Stack {
     const laravelServiceContainer = laravelServiceTaskDefinition.addContainer(
       "laravelServiceContainer",
       {
-        image: ecs.ContainerImage.fromEcrRepository(laravelServicerepo),
+        image: ecs.ContainerImage.fromEcrRepository(
+          laravelServicerepo,
+          "latest"
+        ),
         logging: laravelServiceLogDriver,
+        environment:
+        {
+          "APP_NAME": "laravel",
+          "APP_KEY": `base64:SRLF3MRn3osyurFAVuqDgl82xznZk+y9TfFebyUALEY=`,
+          "APP_DEBUG": "true",
+          "DB_CONNECTION": "mysql",
+          "DB_HOST": props.RdsClusterDevelopment.clusterEndpoint.hostname,
+          "DB_PORT": "3306",
+          "DB_DATABASE": "laravel",
+          "DB_USERNAME": "admin",
+          "DB_PASSWORD": `${props.RdsClusterDevelopment.secret?.secretValueFromJson('password')}`,
+          "REDIS_HOST": props.CacheClusterDevelopment.attrRedisEndpointAddress,
+        }
       }
     );
 
+    nginxServiceContainer.addContainerDependencies({
+      container: laravelServiceContainer,
+      condition: ecs.ContainerDependencyCondition.START,
+    });
+
     nginxServiceContainer.addPortMappings({
-      containerPort: 8000,
+      containerPort: 80,
     });
 
     laravelServiceContainer.addPortMappings({
       containerPort: 9000,
     });
-
-    //Security Groups
-    const nginxServiceSecGrp = new ec2.SecurityGroup(
-      this,
-      "nginxServiceSecurityGroup",
-      {
-        allowAllOutbound: true,
-        securityGroupName: "nginxServiceSecurityGroup",
-        vpc: props.Vpc,
-      }
-    );
-
-    nginxServiceSecGrp.connections.allowFromAnyIpv4(ec2.Port.tcp(8000));
 
     const laravelServiceSecGrp = new ec2.SecurityGroup(
       this,
@@ -220,20 +220,11 @@ class LaravelService extends Stack {
       }
     );
 
-    laravelServiceSecGrp.connections.allowFromAnyIpv4(ec2.Port.tcp(9000));
 
-    // Fargate Services
-    const nginxService = new ecs.FargateService(this, "nginxService", {
-      cluster: cluster,
-      taskDefinition: nginxServiceTaskDefinition,
-      assignPublicIp: false,
-      desiredCount: 2,
-      securityGroup: nginxServiceSecGrp,
-      cloudMapOptions: {
-        name: "nginxService",
-        cloudMapNamespace: dnsNamespace,
-      },
-    });
+    laravelServiceSecGrp.connections.allowFromAnyIpv4(ec2.Port.tcp(80));
+
+    // // Fargate Services
+
 
     const laravelService = new ecs.FargateService(this, "laravelService", {
       cluster: cluster,
@@ -247,8 +238,21 @@ class LaravelService extends Stack {
       },
     });
 
+    const albSecGrp = new ec2.SecurityGroup(
+      this,
+      "albServiceSecurityGroup",
+      {
+        allowAllOutbound: true,
+        securityGroupName: "laravelAlbSecurityGroup",
+        vpc: props.Vpc,
+      }
+    );
+
+    albSecGrp.connections.allowFromAnyIpv4(ec2.Port.tcp(80));
+    albSecGrp.connections.allowFromAnyIpv4(ec2.Port.tcp(443));
+
     // ALB
-    const httpApiInternalALB = new elbv2.ApplicationLoadBalancer(
+    const httpALB = new elbv2.ApplicationLoadBalancer(
       this,
       "httpapiInternalALB",
       {
@@ -257,29 +261,43 @@ class LaravelService extends Stack {
       }
     );
 
-    // ALB Listener
-    const httpApiListener = httpApiInternalALB.addListener("httpapiListener", {
-      port: 80,
+    httpALB.addSecurityGroup(albSecGrp);
+    httpALB.addRedirect();
+
+
+
+    const albSslCert = new acm.DnsValidatedCertificate(this, 'albSiteCertificate', {
+      domainName: props.Domain,
+      subjectAlternativeNames: [`*.${props.Domain}`],
+      hostedZone: props.HostedZone,
+    })
+
+    const httpsApiListener = httpALB.addListener("httpsapiListener", {
+      port: 443,
+      protocol: elbv2.ApplicationProtocol.HTTPS,
+      certificates: [elbv2.ListenerCertificate.fromArn(albSslCert.certificateArn)],
       // Default Target Group
       defaultAction: elbv2.ListenerAction.fixedResponse(200),
     });
 
-
-
-    const laravelServiceTargetGroup = httpApiListener.addTargets(
+    const laravelServiceTargetGroup = httpsApiListener.addTargets(
       "nginxServiceTargetGroup",
       {
         port: 80,
-        priority: 2,
         healthCheck: {
-          path: "/api/authors/health",
+          path: "/login",
           interval: cdk.Duration.seconds(30),
           timeout: cdk.Duration.seconds(3),
         },
-        targets: [nginxService],
-        pathPattern: "/",
+        targets: [laravelService],
       }
     );
+
+    new route53.ARecord(this, 'AlbAliasRecord', {
+      recordName: `${dnsPrefix}.${props.Domain}`,
+      target: route53.RecordTarget.fromAlias(new targets.LoadBalancerTarget(httpALB)),
+      zone: props.HostedZone
+    });
 
 
 
