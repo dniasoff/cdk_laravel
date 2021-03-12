@@ -9,25 +9,15 @@ import { RdsCluster } from '../lib/rds_cluster';
 import { RedisCluster } from '../lib/redis_cluster';
 
 
-
-var props = new GlobalProperties();
-
-
-props.Domain = "kodespace.co.uk";
-props.ServiceName = "symple";
-props.LambdaCodePath = "arn:aws:lambda:eu-west-2:209497400698:layer:php-74-fpm:18";
-props.LambdaCodePath = "../nodejs-mysql-links"
+var props: GlobalProperties = require('../settings.json');
 
 
-
-var hostedZoneId: string = "Z016552312S0N2LCUKQCF";
-var vpc_cidr: string = "10.10.0.0/16";
 
 class SharedServices extends Stack {
   constructor(scope: App, id: string) {
     super(scope, id);
 
-     new SharedStack(app,`${id}-vpc`,props, vpc_cidr,hostedZoneId);
+     new SharedStack(app,`${id}-vpc`,props);
 
      new RdsCluster(app, `${id}-rds-prod`, props, true);
      new RdsCluster(app, `${id}-rds-dev`, props, false);
@@ -42,7 +32,7 @@ class SharedServices extends Stack {
 const app = new cdk.App();
 
 //create shared resources
-let sharedServices = new SharedServices(app, props.ServiceName);
+let sharedServices = new SharedServices(app, props.serviceName);
 
 //create service instances
 
@@ -50,9 +40,11 @@ let sharedServices = new SharedServices(app, props.ServiceName);
 
 
 
-let devService = new LaravelService(app, `${props.ServiceName}-service-dev`, props, "dev", "dev");
+let devService = new LaravelService(app, `${props.serviceName}-service-dev`, props, "dev", "dev",0);
+let qaService = new LaravelService(app, `${props.serviceName}-service-qa`, props, "qa", "qa",1);
+let prodService = new LaravelService(app, `${props.serviceName}-service-prod`, props, "prod", "prod",2);
 
 cdk.Tags.of(app).add("stack_type", "cdk");
-cdk.Tags.of(app).add("service", props.ServiceName);
+cdk.Tags.of(app).add("service", props.serviceName);
 
 

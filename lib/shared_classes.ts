@@ -6,21 +6,20 @@ import route53 = require('@aws-cdk/aws-route53');
 import rds = require('@aws-cdk/aws-rds');
 import elasticache = require('@aws-cdk/aws-elasticache');
 
-class GlobalProperties {
-    ServiceName: string;
-    Domain: string;
-    SslCertificate: acm.DnsValidatedCertificate;
-    HostedZone: route53.IHostedZone;
-    Vpc: ec2.Vpc;
-    RdsClusterProduction: rds.ServerlessCluster;
-    RdsClusterDevelopment: rds.ServerlessCluster;
-    CacheClusterProduction: elasticache.CfnCacheCluster;
-    CacheClusterDevelopment: elasticache.CfnCacheCluster;
-    RdsSg: ec2.SecurityGroup;
-    RedisSg: ec2.SecurityGroup;
-    BrefLayerVersion: string;
-    LambdaCodePath: string;
-
+interface GlobalProperties {
+    serviceName: string;
+    domain: string;
+    sslCertificate: acm.DnsValidatedCertificate;
+    hostedZone: route53.IHostedZone;
+    hostedZoneId: string;
+    vpc: ec2.Vpc;
+    vpcCidr: string;
+    rdsClusterProduction: rds.ServerlessCluster;
+    rdsClusterDevelopment: rds.ServerlessCluster;
+    cacheClusterProduction: elasticache.CfnCacheCluster;
+    cacheClusterDevelopment: elasticache.CfnCacheCluster;
+    rdsSg: ec2.SecurityGroup;
+    redisSg: ec2.SecurityGroup;
   }
 
   export { GlobalProperties }

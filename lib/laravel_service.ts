@@ -27,7 +27,7 @@ import { GlobalProperties } from "./shared_classes";
 
 
 class LaravelService extends Stack {
-  constructor(scope: App, id: string, props: GlobalProperties, branch: string, dnsPrefix: string) {
+  constructor(scope: App, id: string, props: GlobalProperties, branch: string, dnsPrefix: string, redisInstance: number) {
     super(scope, id);
 
     let bucket: s3.Bucket;
@@ -37,33 +37,33 @@ class LaravelService extends Stack {
 
 
     if (branch == "prod") {
-      bucket = new s3.Bucket(this, `${props.ServiceName}-static-content-${branch}`, {
+      bucket = new s3.Bucket(this, `${props.serviceName}-static-content-${branch}`, {
         publicReadAccess: true,
         websiteIndexDocument: 'index.html',
         websiteErrorDocument: 'error.html',
         removalPolicy: RemovalPolicy.DESTROY,
       });
 
-      dbCluster = props.RdsClusterProduction;
-      cacheCluster = props.CacheClusterProduction;
+      dbCluster = props.rdsClusterProduction;
+      cacheCluster = props.cacheClusterProduction;
     }
     else {
-      bucket = new s3.Bucket(this, `${props.ServiceName}-static-content-${branch}`, {
+      bucket = new s3.Bucket(this, `${props.serviceName}-static-content-${branch}`, {
         publicReadAccess: true,
         websiteIndexDocument: 'index.html',
         websiteErrorDocument: 'error.html',
         removalPolicy: RemovalPolicy.DESTROY,
       });
 
-      dbCluster = props.RdsClusterDevelopment
-      cacheCluster = props.CacheClusterDevelopment;
+      dbCluster = props.rdsClusterDevelopment
+      cacheCluster = props.cacheClusterDevelopment;
     }
 
 
     const distribution = new cloudfront.CloudFrontWebDistribution(this, 'SiteDistribution', {
       aliasConfiguration: {
-        acmCertRef: props.SslCertificate.certificateArn,
-        names: [`${dnsPrefix}-static.${props.Domain}`],
+        acmCertRef: props.sslCertificate.certificateArn,
+        names: [`${dnsPrefix}-static.${props.domain}`],
         sslMethod: cloudfront.SSLMethod.SNI,
         securityPolicy: cloudfront.SecurityPolicyProtocol.TLS_V1_1_2016,
       },
@@ -79,15 +79,15 @@ class LaravelService extends Stack {
     });
 
     new route53.ARecord(this, 'SiteAliasRecord', {
-      recordName: `${dnsPrefix}-static.${props.Domain}`,
+      recordName: `${dnsPrefix}-static.${props.domain}`,
       target: route53.RecordTarget.fromAlias(new targets.CloudFrontTarget(distribution)),
-      zone: props.HostedZone
+      zone: props.hostedZone
     });
 
 
     // ECS Cluster
     const cluster = new ecs.Cluster(this, "Fargate Cluster", {
-      vpc: props.Vpc
+      vpc: props.vpc  
     });
 
     // Cloud Map Namespace
@@ -96,7 +96,7 @@ class LaravelService extends Stack {
       "DnsNamespace",
       {
         name: "http-api.local",
-        vpc: props.Vpc,
+        vpc: props.vpc  ,
         description: "Private DnsNamespace for Microservices",
       }
     );
@@ -187,12 +187,14 @@ class LaravelService extends Stack {
           "APP_KEY": `base64:SRLF3MRn3osyurFAVuqDgl82xznZk+y9TfFebyUALEY=`,
           "APP_DEBUG": "true",
           "DB_CONNECTION": "mysql",
-          "DB_HOST": props.RdsClusterDevelopment.clusterEndpoint.hostname,
+          "DB_HOST": props.rdsClusterDevelopment.clusterEndpoint.hostname,
           "DB_PORT": "3306",
-          "DB_DATABASE": "laravel",
+          "DB_DATABASE": `laravel-${this.environment}`,
           "DB_USERNAME": "admin",
-          "DB_PASSWORD": `${props.RdsClusterDevelopment.secret?.secretValueFromJson('password')}`,
-          "REDIS_HOST": props.CacheClusterDevelopment.attrRedisEndpointAddress,
+          "DB_PASSWORD": `${props.rdsClusterDevelopment.secret?.secretValueFromJson('password')}`,
+          "REDIS_HOST": props.cacheClusterDevelopment.attrRedisEndpointAddress,
+          "REDIS_DB": redisInstance.toString(),
+
         }
       }
     );
@@ -216,7 +218,7 @@ class LaravelService extends Stack {
       {
         allowAllOutbound: true,
         securityGroupName: "laravelServiceSecurityGroup",
-        vpc: props.Vpc,
+        vpc: props.vpc  ,
       }
     );
 
@@ -244,7 +246,7 @@ class LaravelService extends Stack {
       {
         allowAllOutbound: true,
         securityGroupName: "laravelAlbSecurityGroup",
-        vpc: props.Vpc,
+        vpc: props.vpc  ,
       }
     );
 
@@ -256,7 +258,7 @@ class LaravelService extends Stack {
       this,
       "httpapiInternalALB",
       {
-        vpc: props.Vpc,
+        vpc: props.vpc  ,
         internetFacing: true,
       }
     );
@@ -267,9 +269,9 @@ class LaravelService extends Stack {
 
 
     const albSslCert = new acm.DnsValidatedCertificate(this, 'albSiteCertificate', {
-      domainName: props.Domain,
-      subjectAlternativeNames: [`*.${props.Domain}`],
-      hostedZone: props.HostedZone,
+      domainName: props.domain,
+      subjectAlternativeNames: [`*.${props.domain}`],
+      hostedZone: props.hostedZone,
     })
 
     const httpsApiListener = httpALB.addListener("httpsapiListener", {
@@ -278,6 +280,7 @@ class LaravelService extends Stack {
       certificates: [elbv2.ListenerCertificate.fromArn(albSslCert.certificateArn)],
       // Default Target Group
       defaultAction: elbv2.ListenerAction.fixedResponse(200),
+
     });
 
     const laravelServiceTargetGroup = httpsApiListener.addTargets(
@@ -290,14 +293,38 @@ class LaravelService extends Stack {
           timeout: cdk.Duration.seconds(3),
         },
         targets: [laravelService],
+        stickinessCookieDuration: cdk.Duration.seconds(86500)
+
       }
     );
 
-    new route53.ARecord(this, 'AlbAliasRecord', {
-      recordName: `${dnsPrefix}.${props.Domain}`,
-      target: route53.RecordTarget.fromAlias(new targets.LoadBalancerTarget(httpALB)),
-      zone: props.HostedZone
-    });
+
+ 
+// Add LB DNS entries
+
+    if (this.environment == "prod") {
+
+      new route53.ARecord(this, 'AlbAliasRecord', {
+        recordName: `www.${props.domain}`,
+        target: route53.RecordTarget.fromAlias(new targets.LoadBalancerTarget(httpALB)),
+        zone: props.hostedZone
+      });
+
+      new route53.ARecord(this, 'AlbAliasRecord', {
+        recordName: `${props.domain}`,
+        target: route53.RecordTarget.fromAlias(new targets.LoadBalancerTarget(httpALB)),
+        zone: props.hostedZone
+      });
+
+    } else {
+
+      new route53.ARecord(this, 'AlbAliasRecord', {
+        recordName: `${dnsPrefix}.${props.domain}`,
+        target: route53.RecordTarget.fromAlias(new targets.LoadBalancerTarget(httpALB)),
+        zone: props.hostedZone
+      });
+
+    }
 
 
 

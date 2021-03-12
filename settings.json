@@ -1,0 +1,6 @@
+{
+    "serviceName": "symple",
+    "domain": "kodespace.co.uk",
+    "hostedZoneId": "Z016552312S0N2LCUKQCF",
+    "vpcCidr": "10.10.0.0/16"
+}

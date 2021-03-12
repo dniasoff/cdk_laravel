@@ -21,13 +21,13 @@ class RdsCluster extends Stack {
       engine: rds.DatabaseClusterEngine.AURORA_MYSQL,
       
       parameterGroup: rds.ParameterGroup.fromParameterGroupName(this, 'ParameterGroup', 'default.aurora-mysql5.7'),
-      vpc: props.Vpc,
+      vpc: props.vpc ,
       scaling: {
           autoPause: isProduction? Duration.seconds(300) : Duration.seconds(300),
           maxCapacity: isProduction ? rds.AuroraCapacityUnit.ACU_4 : rds.AuroraCapacityUnit.ACU_2,
           minCapacity: rds.AuroraCapacityUnit.ACU_1,
       },
-      securityGroups: [props.RdsSg],
+      securityGroups: [props.rdsSg],
       backupRetention: isProduction ? Duration.days(35) : Duration.days(3),
       removalPolicy: isProduction ? RemovalPolicy.DESTROY : RemovalPolicy.DESTROY,
       deletionProtection: false,
@@ -39,17 +39,17 @@ class RdsCluster extends Stack {
 
     if (isProduction){
       environment = "prod"
-      props.RdsClusterProduction = dbCluster;
+      props.rdsClusterProduction = dbCluster;
     }
     else
     {
       environment = "non-prod"
-      props.RdsClusterDevelopment = dbCluster;
+      props.rdsClusterDevelopment = dbCluster;
     }
 
     const param = new ssm.StringParameter(this, 'db-secret', {
       stringValue: `${dbCluster.secret?.secretArn}`,
-      parameterName: `/${props.ServiceName}/${environment}/dbSecretArn`
+      parameterName: `/${props.serviceName}/${environment}/dbSecretArn`
       // allowedPattern: '.*',
     });
 

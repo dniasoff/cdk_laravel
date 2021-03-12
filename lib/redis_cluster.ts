@@ -24,7 +24,7 @@ class RedisCluster extends Stack {
     // create private subnets groups (needed for redis) 
     const subnetGroup = new elasticache.CfnSubnetGroup(this, `${id}-subnet-group`, {
       description: `List of subnets used for redis cache ${id}`,
-      subnetIds: props.Vpc.privateSubnets.map(function (subnet) {
+      subnetIds: props.vpc .privateSubnets.map(function (subnet) {
         return subnet.subnetId;
       })
     });
@@ -37,24 +37,24 @@ class RedisCluster extends Stack {
       autoMinorVersionUpgrade: true,
       cacheSubnetGroupName: subnetGroup.ref,
       vpcSecurityGroupIds: [
-        props.RedisSg.securityGroupId
+        props.redisSg.securityGroupId
       ]
     });
 
     if (isProduction){
       environment = "prod"
-      props.CacheClusterProduction = redisCluster;
+      props.cacheClusterProduction = redisCluster;
     }
     else
     {
       environment = "non-prod"
-      props.CacheClusterDevelopment = redisCluster;
+      props.cacheClusterDevelopment = redisCluster;
     }
 
     // Add SSM parameter for cache endpoint
     const param = new ssm.StringParameter(this, 'db-secret', {
       stringValue: redisCluster.attrRedisEndpointAddress,
-      parameterName: `/${props.ServiceName}/${environment}/cacheEndpoint`
+      parameterName: `/${props.serviceName}/${environment}/cacheEndpoint`
       // allowedPattern: '.*',
     });
     
