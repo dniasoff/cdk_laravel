@@ -34,15 +34,10 @@ const app = new cdk.App();
 //create shared resources
 let sharedServices = new SharedServices(app, props.serviceName);
 
-//create service instances
+let productionService = new LaravelService(app, `${props.serviceName}-service-master`, props, "production", "production",0);
+let developService = new LaravelService(app, `${props.serviceName}-service-develop`, props, "develop", "develop",1);
+let stagingService = new LaravelService(app, `${props.serviceName}-service-staging`, props, "staging", "staging",2);
 
-
-
-
-
-let devService = new LaravelService(app, `${props.serviceName}-service-dev`, props, "dev", "dev",0);
-let qaService = new LaravelService(app, `${props.serviceName}-service-qa`, props, "qa", "qa",1);
-let prodService = new LaravelService(app, `${props.serviceName}-service-prod`, props, "prod", "prod",2);
 
 cdk.Tags.of(app).add("stack_type", "cdk");
 cdk.Tags.of(app).add("service", props.serviceName);

@@ -36,7 +36,7 @@ class LaravelService extends Stack {
 
 
 
-    if (branch == "prod") {
+    if (branch == "production") {
       bucket = new s3.Bucket(this, `${props.serviceName}-static-content-${branch}`, {
         publicReadAccess: true,
         websiteIndexDocument: 'index.html',
@@ -302,7 +302,7 @@ class LaravelService extends Stack {
  
 // Add LB DNS entries
 
-    if (this.environment == "prod") {
+    if (this.environment == "production") {
 
       new route53.ARecord(this, 'AlbAliasRecord', {
         recordName: `www.${props.domain}`,
