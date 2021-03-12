@@ -161,24 +161,27 @@ class LaravelService extends Stack {
       "cdk_laravel/laravel"
     );
 
+    let tag: string;
+    (branch == "master") ? tag="release" : tag=branch;
+
     // Task Containers
     const nginxServiceContainer = laravelServiceTaskDefinition.addContainer(
       "nginxServiceContainer",
       {
         image: ecs.ContainerImage.fromEcrRepository(
           nginxServicerepo,
-          "latest"
+          tag,
         ),
         logging: nginxServiceLogDriver,
       }
     );
-
+ 
     const laravelServiceContainer = laravelServiceTaskDefinition.addContainer(
       "laravelServiceContainer",
       {
         image: ecs.ContainerImage.fromEcrRepository(
           laravelServicerepo,
-          "latest"
+          tag,
         ),
         logging: laravelServiceLogDriver,
         environment:
