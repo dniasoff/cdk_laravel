@@ -7,7 +7,7 @@ on:
       - master
       - staging
       - develop
-      
+
 jobs:
   aws_cdk:
     runs-on: ubuntu-latest    
@@ -44,7 +44,7 @@ jobs:
           CDK_SERVICE_NAME: ${{ secrets.CDK_SERVICE_NAME }}
       - name: Destroy
         shell: bash
-        run: "cdk destroy ${CDK_SERVICE_NAME}-service-${{ steps.extract_branch.outputs.branch }}"
+        run: "cdk destroy ${CDK_SERVICE_NAME}-service-${{ steps.extract_branch.outputs.branch }} --force"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
