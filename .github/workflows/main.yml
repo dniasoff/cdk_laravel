@@ -19,36 +19,36 @@ jobs:
         shell: bash
         run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
         id: extract_branch
-      - name: cdk synth
-        uses: youyo/aws-cdk-github-actions@v2
+      - uses: actions/setup-node@v2
         with:
-          cdk_subcommand: 'synth'
+        node-version: '15'
+      - name: Install CDK       
+      shell: bash
+      run: |
+        npm install -g typescript
+        npm install -g aws-cdk
+      id: extract_branch
+      - name: cdk synth
+        shell: bash
+        run: "cdk synth --all"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
           CDK_SERVICE_NAME: ${{ secrets.CDK_SERVICE_NAME }}
       - name: cdk diff
-        uses: youyo/aws-cdk-github-actions@v2
-        with:
-          cdk_subcommand: 'diff'
-          cdk_stack: ${CDK_SERVICE_NAME}-service-${{ steps.extract_branch.outputs.branch }}
-          actions_comment: true
+        shell: bash
+        run: "cdk diff ${CDK_SERVICE_NAME}-service-${{ steps.extract_branch.outputs.branch }}"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
           CDK_SERVICE_NAME: ${{ secrets.CDK_SERVICE_NAME }}
       - name: cdk deploy
-        uses: youyo/aws-cdk-github-actions@v2
-        with:
-          cdk_subcommand: 'deploy'
-          cdk_stack: ${CDK_SERVICE_NAME}-service-${{ steps.extract_branch.outputs.branch }}
-          cdk_args: '--require-approval never'
-          actions_comment: false
+        shell: bash
+        run: "cdk deploy ${CDK_SERVICE_NAME}-service-${{ steps.extract_branch.outputs.branch }}"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
           CDK_SERVICE_NAME: ${{ secrets.CDK_SERVICE_NAME }}
-
