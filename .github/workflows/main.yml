@@ -21,13 +21,12 @@ jobs:
         id: extract_branch
       - uses: actions/setup-node@v2
         with:
-        node-version: '15'
+          node-version: '15'
       - name: Install CDK       
-      shell: bash
-      run: |
-        npm install -g typescript
-        npm install -g aws-cdk
-      id: extract_branch
+        shell: bash
+        run: |
+          npm install -g typescript
+          npm install -g aws-cdk
       - name: cdk synth
         shell: bash
         run: "cdk synth --all"
