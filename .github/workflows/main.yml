@@ -20,7 +20,7 @@ jobs:
         run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
         id: extract_branch
       - name: cdk synth
-        uses: jd-carroll/aws-cdk-github-commands@v1.1.10
+        uses: youyo/aws-cdk-github-actions@v2
         with:
           cdk_subcommand: 'synth'
         env:
