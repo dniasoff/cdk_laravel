@@ -1,8 +1,8 @@
 ---
-name: CDK workflow
+name: Deploy workflow
 
 on:
-  push:
+  workflow_dispatch:
     branches:
       - master
       - staging

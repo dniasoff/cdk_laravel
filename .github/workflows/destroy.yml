@@ -1,14 +1,13 @@
 ---
-name: CDK workflow
+name: Destroy workflow
 
 on:
-  push:
+  workflow_dispatch:
     branches:
       - master
       - staging
       - develop
-
-
+      
 jobs:
   aws_cdk:
     runs-on: ubuntu-latest    
@@ -43,9 +42,9 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
           CDK_SERVICE_NAME: ${{ secrets.CDK_SERVICE_NAME }}
-      - name: Deploy
+      - name: Destroy
         shell: bash
-        run: "cdk deploy ${CDK_SERVICE_NAME}-service-${{ steps.extract_branch.outputs.branch }}"
+        run: "cdk destroy ${CDK_SERVICE_NAME}-service-${{ steps.extract_branch.outputs.branch }}"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
