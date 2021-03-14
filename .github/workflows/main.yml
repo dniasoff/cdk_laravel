@@ -1,14 +1,9 @@
 
 ---
-name: SimpliCert workflow
+name: CDK workflow
 
 on:
   push:
-    branches:
-      - master
-      - staging
-      - develop
-  pull_request:
     branches:
       - master
       - staging
@@ -25,7 +20,7 @@ jobs:
         run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
         id: extract_branch
       - name: cdk synth
-        uses: youyo/aws-cdk-github-actions@v2
+        uses: jd-carroll/aws-cdk-github-commands@v1.1.10
         with:
           cdk_subcommand: 'synth'
         env:
