@@ -162,7 +162,7 @@ class LaravelService extends Stack {
     );
 
     let tag: string;
-    (branch == "master") ? tag="release" : tag=branch;
+    (branch == "master") ? tag="latest" : tag=branch;
 
     // Task Containers
     const nginxServiceContainer = laravelServiceTaskDefinition.addContainer(
