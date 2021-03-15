@@ -34,7 +34,7 @@ const app = new cdk.App();
 //create shared resources
 let sharedServices = new SharedServices(app, props.serviceName);
 
-let productionService = new LaravelService(app, `${props.serviceName}-service-master`, props, "production", "production",0);
+let productionService = new LaravelService(app, `${props.serviceName}-service-master`, props, "master", "master",0);
 let developService = new LaravelService(app, `${props.serviceName}-service-develop`, props, "develop", "develop",1);
 let stagingService = new LaravelService(app, `${props.serviceName}-service-staging`, props, "staging", "staging",2);
 
