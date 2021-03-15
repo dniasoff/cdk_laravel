@@ -306,14 +306,14 @@ class LaravelService extends Stack {
 // Add LB DNS entries
 
     if (branch == "master") {
-      
+
       new route53.ARecord(this, 'AlbAliasRecord', {
         recordName: `www.${props.domain}`,
         target: route53.RecordTarget.fromAlias(new targets.LoadBalancerTarget(httpALB)),
         zone: props.hostedZone
       });
 
-      new route53.ARecord(this, 'AlbAliasRecord', {
+      new route53.ARecord(this, 'AlbAliasRecord2', {
         recordName: `${props.domain}`,
         target: route53.RecordTarget.fromAlias(new targets.LoadBalancerTarget(httpALB)),
         zone: props.hostedZone
