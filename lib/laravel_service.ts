@@ -198,7 +198,7 @@ class LaravelService extends Stack {
           "DB_CONNECTION": "mysql",
           "DB_HOST": dbCluster.clusterEndpoint.hostname,
           "DB_PORT": "3306",
-          "DB_DATABASE": `laravel-${environment}`,
+          "DB_DATABASE": `laravel_${environment}`,
           "DB_USERNAME": "admin",
           "DB_PASSWORD": `${dbCluster.secret?.secretValueFromJson('password')}`,
           "REDIS_HOST": cacheCluster.attrRedisEndpointAddress,
