@@ -33,10 +33,13 @@ class LaravelService extends Stack {
     let bucket: s3.Bucket;
     let dbCluster: rds.ServerlessCluster;
     let cacheCluster: elasticache.CfnCacheCluster;
+    let environment: string;
+
+    (branch == "master" ) ? environment = "production" : environment = branch;
 
 
 
-    if (branch == "master") {
+    if (environment == "production") {
       bucket = new s3.Bucket(this, `${props.serviceName}-static-content-production`, {
         publicReadAccess: true,
         websiteIndexDocument: 'index.html',
@@ -192,7 +195,7 @@ class LaravelService extends Stack {
           "DB_CONNECTION": "mysql",
           "DB_HOST": props.rdsClusterDevelopment.clusterEndpoint.hostname,
           "DB_PORT": "3306",
-          "DB_DATABASE": `laravel-${this.environment}`,
+          "DB_DATABASE": `laravel-${environment}`,
           "DB_USERNAME": "admin",
           "DB_PASSWORD": `${props.rdsClusterDevelopment.secret?.secretValueFromJson('password')}`,
           "REDIS_HOST": props.cacheClusterDevelopment.attrRedisEndpointAddress,
@@ -305,7 +308,7 @@ class LaravelService extends Stack {
  
 // Add LB DNS entries
 
-    if (branch == "master") {
+  if (environment == "production") {
 
       new route53.ARecord(this, 'AlbAliasRecord', {
         recordName: `www.${props.domain}`,
