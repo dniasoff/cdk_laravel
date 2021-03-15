@@ -16,6 +16,9 @@ class RdsCluster extends Stack {
     let environment: string;
     let dbCluster: rds.ServerlessCluster;
     
+    (isProduction) ? environment = "prod" : environment = "non-prod";
+
+    
     // create db cluster
     dbCluster = new  rds.ServerlessCluster(this, `${id}-dbcluster`, {
       engine: rds.DatabaseClusterEngine.AURORA_MYSQL,
@@ -35,17 +38,10 @@ class RdsCluster extends Stack {
       
     });
 
+    (isProduction) ? props.rdsClusterProduction = dbCluster : props.rdsClusterDevelopment = dbCluster;
     
 
-    if (isProduction){
-      environment = "prod"
-      props.rdsClusterProduction = dbCluster;
-    }
-    else
-    {
-      environment = "non-prod"
-      props.rdsClusterDevelopment = dbCluster;
-    }
+ 
 
     const param = new ssm.StringParameter(this, 'db-secret', {
       stringValue: `${dbCluster.secret?.secretArn}`,

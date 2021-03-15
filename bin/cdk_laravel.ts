@@ -17,13 +17,13 @@ class SharedServices extends Stack {
   constructor(scope: App, id: string) {
     super(scope, id);
 
-     new SharedStack(app,`${id}-vpc`,props);
+     new SharedStack(scope,`${id}-vpc`,props);
 
-     new RdsCluster(app, `${id}-rds-prod`, props, true);
-     new RdsCluster(app, `${id}-rds-dev`, props, false);
+     new RdsCluster(scope, `${id}-rds-prod`, props, true);
+     new RdsCluster(scope, `${id}-rds-dev`, props, false);
 
-     new RedisCluster(app, `${id}-cache-prod`, props, true);
-     new RedisCluster(app, `${id}-cache-dev`, props, false);
+     new RedisCluster(scope, `${id}-cache-prod`, props, true);
+     new RedisCluster(scope, `${id}-cache-dev`, props, false);
 
   }
 }
@@ -34,9 +34,9 @@ const app = new cdk.App();
 //create shared resources
 let sharedServices = new SharedServices(app, props.serviceName);
 
-let productionService = new LaravelService(app, `${props.serviceName}-service-master`, props, "master", "master",0);
-let developService = new LaravelService(app, `${props.serviceName}-service-develop`, props, "develop", "develop",1);
-let stagingService = new LaravelService(app, `${props.serviceName}-service-staging`, props, "staging", "staging",2);
+let productionService = new LaravelService(app, `${props.serviceName}-service-master`, props, "master",0);
+let developService = new LaravelService(app, `${props.serviceName}-service-develop`, props, "develop",1);
+let stagingService = new LaravelService(app, `${props.serviceName}-service-staging`, props, "staging",2);
 
 
 cdk.Tags.of(app).add("stack_type", "cdk");

@@ -14,12 +14,7 @@ class RedisCluster extends Stack {
     let environment: string;
     let redisCluster : elasticache.CfnCacheCluster;
 
-    if (isProduction) {
-      environment = "prod"
-    }
-    else {
-      environment = "non-prod"
-    }
+    (isProduction) ? environment = "prod" : environment = "non-prod";
 
     // create private subnets groups (needed for redis) 
     const subnetGroup = new elasticache.CfnSubnetGroup(this, `${id}-subnet-group`, {
@@ -41,15 +36,7 @@ class RedisCluster extends Stack {
       ]
     });
 
-    if (isProduction){
-      environment = "prod"
-      props.cacheClusterProduction = redisCluster;
-    }
-    else
-    {
-      environment = "non-prod"
-      props.cacheClusterDevelopment = redisCluster;
-    }
+    (isProduction) ? props.cacheClusterProduction = redisCluster : props.cacheClusterDevelopment = redisCluster;
 
     // Add SSM parameter for cache endpoint
     const param = new ssm.StringParameter(this, 'db-secret', {
