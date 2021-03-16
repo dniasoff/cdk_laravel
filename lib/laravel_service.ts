@@ -316,7 +316,7 @@ class LaravelService extends Stack {
 
     });
 
-    const laravelServiceTargetGroup1 = httpsApiListener.addTargets(
+    const laravelServiceTargetGroup1 = new elbv2.ApplicationTargetGroup(this, 
       "nginxServiceTargetGroup1",
       {
         port: 80,
@@ -326,12 +326,14 @@ class LaravelService extends Stack {
           timeout: cdk.Duration.seconds(3),
         },
         targets: [laravelService],
-        stickinessCookieDuration: cdk.Duration.seconds(86500)
+        stickinessCookieDuration: cdk.Duration.seconds(86500),
+        vpc: props.vpc
 
       }
     );
 
-    const laravelServiceTargetGroup2 = new elbv2.ApplicationTargetGroup(this, "nginxServiceTargetGroup2",
+    const laravelServiceTargetGroup2 = new elbv2.ApplicationTargetGroup(this, 
+      "nginxServiceTargetGroup2",
       {
         port: 80,
         healthCheck: {
@@ -342,9 +344,15 @@ class LaravelService extends Stack {
         targets: [laravelService],
         stickinessCookieDuration: cdk.Duration.seconds(86500),
         vpc: props.vpc,
+        
 
       }
     );
+
+    httpsApiListener.addTargetGroups("ServiceTargetGroup", 
+    {
+      targetGroups: [laravelServiceTargetGroup1,laravelServiceTargetGroup2]
+    })
 
 
     // Add LB DNS entries
