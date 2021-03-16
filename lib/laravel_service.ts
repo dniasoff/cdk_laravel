@@ -316,8 +316,23 @@ class LaravelService extends Stack {
 
     });
 
-    const laravelServiceTargetGroup = httpsApiListener.addTargets(
-      "nginxServiceTargetGroup",
+    const laravelServiceTargetGroup1 = httpsApiListener.addTargets(
+      "nginxServiceTargetGroup1",
+      {
+        port: 80,
+        healthCheck: {
+          path: "/login",
+          interval: cdk.Duration.seconds(30),
+          timeout: cdk.Duration.seconds(3),
+        },
+        targets: [laravelService],
+        stickinessCookieDuration: cdk.Duration.seconds(86500)
+
+      }
+    );
+
+    const laravelServiceTargetGroup2 = httpsApiListener.addTargets(
+      "nginxServiceTargetGroup2",
       {
         port: 80,
         healthCheck: {
