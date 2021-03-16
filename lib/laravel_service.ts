@@ -38,9 +38,9 @@ class LaravelService extends Stack {
     let cacheCluster: elasticache.CfnCacheCluster;
     let environment: string;
 
-    (branch == "master" ) ? environment = "production" : environment = branch;
-    (environment == "production") ? dbCluster = props.rdsClusterProduction : dbCluster = props.rdsClusterDevelopment ;
-    (environment == "production") ? cacheCluster = props.cacheClusterProduction : cacheCluster = props.cacheClusterDevelopment ;
+    (branch == "master") ? environment = "production" : environment = branch;
+    (environment == "production") ? dbCluster = props.rdsClusterProduction : dbCluster = props.rdsClusterDevelopment;
+    (environment == "production") ? cacheCluster = props.cacheClusterProduction : cacheCluster = props.cacheClusterDevelopment;
 
 
 
@@ -93,12 +93,12 @@ class LaravelService extends Stack {
 
     // ECS Cluster
     const cluster = new ecs.Cluster(this, "Fargate Cluster", {
-      vpc: props.vpc,     
+      vpc: props.vpc,
     });
 
 
-     // Add SSM parameter for cache endpoint
-     const param = new ssm.StringParameter(this, 'clusterName', {
+    // Add SSM parameter for cache endpoint
+    const param = new ssm.StringParameter(this, 'clusterName', {
       stringValue: cluster.clusterName,
       parameterName: `/${props.serviceName}/${environment}/clusterName`
     });
@@ -109,7 +109,7 @@ class LaravelService extends Stack {
       "DnsNamespace",
       {
         name: "http-api.local",
-        vpc: props.vpc  ,
+        vpc: props.vpc,
         description: "Private DnsNamespace for Microservices",
       }
     );
@@ -180,7 +180,7 @@ class LaravelService extends Stack {
     );
 
     let tag: string;
-    (environment == "production") ? tag="latest" : tag=branch;
+    (environment == "production") ? tag = "latest" : tag = branch;
 
     // Task Containers
     const nginxServiceContainer = laravelServiceTaskDefinition.addContainer(
@@ -193,7 +193,7 @@ class LaravelService extends Stack {
         logging: nginxServiceLogDriver,
       }
     );
- 
+
     const laravelServiceContainer = laravelServiceTaskDefinition.addContainer(
       "laravelServiceContainer",
       {
@@ -239,13 +239,13 @@ class LaravelService extends Stack {
       {
         allowAllOutbound: true,
         securityGroupName: "laravelServiceSecurityGroup",
-        vpc: props.vpc  ,
+        vpc: props.vpc,
       }
     );
-      new ssm.StringParameter(this, 'laravelSecurityGroup', {
-        stringValue: laravelServiceSecGrp.uniqueId,
-        parameterName: `/${props.serviceName}/${environment}/laravelSecurityGroup`
-      });
+    new ssm.StringParameter(this, 'laravelSecurityGroup', {
+      stringValue: laravelServiceSecGrp.uniqueId,
+      parameterName: `/${props.serviceName}/${environment}/laravelSecurityGroup`
+    });
 
 
     laravelServiceSecGrp.connections.allowFromAnyIpv4(ec2.Port.tcp(80));
@@ -263,7 +263,7 @@ class LaravelService extends Stack {
         name: "laravelService",
         cloudMapNamespace: dnsNamespace,
       },
-      deploymentController:  {
+      deploymentController: {
         type: ecs.DeploymentControllerType.CODE_DEPLOY,
       }
     });
@@ -279,7 +279,7 @@ class LaravelService extends Stack {
       {
         allowAllOutbound: true,
         securityGroupName: "laravelAlbSecurityGroup",
-        vpc: props.vpc  ,
+        vpc: props.vpc,
       }
     );
 
@@ -291,7 +291,7 @@ class LaravelService extends Stack {
       this,
       "httpapiInternalALB",
       {
-        vpc: props.vpc  ,
+        vpc: props.vpc,
         internetFacing: true,
       }
     );
@@ -331,8 +331,7 @@ class LaravelService extends Stack {
       }
     );
 
-    const laravelServiceTargetGroup2 = httpsApiListener.addTargets(
-      "nginxServiceTargetGroup2",
+    const laravelServiceTargetGroup2 = new elbv2.ApplicationTargetGroup(this, "nginxServiceTargetGroup2",
       {
         port: 80,
         healthCheck: {
@@ -341,16 +340,16 @@ class LaravelService extends Stack {
           timeout: cdk.Duration.seconds(3),
         },
         targets: [laravelService],
-        stickinessCookieDuration: cdk.Duration.seconds(86500)
+        stickinessCookieDuration: cdk.Duration.seconds(86500),
+        vpc: props.vpc,
 
       }
     );
 
 
- 
-// Add LB DNS entries
+    // Add LB DNS entries
 
-  if (environment == "production") {
+    if (environment == "production") {
 
       new route53.ARecord(this, 'AlbAliasRecord', {
         recordName: `www.${props.domain}`,
