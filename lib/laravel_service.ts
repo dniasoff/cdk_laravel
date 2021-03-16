@@ -93,7 +93,14 @@ class LaravelService extends Stack {
 
     // ECS Cluster
     const cluster = new ecs.Cluster(this, "Fargate Cluster", {
-      vpc: props.vpc  
+      vpc: props.vpc,     
+    });
+
+
+     // Add SSM parameter for cache endpoint
+     const param = new ssm.StringParameter(this, 'clusterName', {
+      stringValue: cluster.clusterName,
+      parameterName: `/${props.serviceName}/${environment}/clusterName`
     });
 
     // Cloud Map Namespace
@@ -110,6 +117,11 @@ class LaravelService extends Stack {
     // Task Role
     const taskrole = new iam.Role(this, "ecsTaskExecutionRole", {
       assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
+    });
+
+    new ssm.StringParameter(this, 'ecsTaskExecutionRoleArn', {
+      stringValue: taskrole.roleArn,
+      parameterName: `/${props.serviceName}/${environment}/ecsTaskExecutionRoleArn`
     });
 
     taskrole.addManagedPolicy(
@@ -230,6 +242,10 @@ class LaravelService extends Stack {
         vpc: props.vpc  ,
       }
     );
+      new ssm.StringParameter(this, 'laravelSecurityGroup', {
+        stringValue: laravelServiceSecGrp.uniqueId,
+        parameterName: `/${props.serviceName}/${environment}/laravelSecurityGroup`
+      });
 
 
     laravelServiceSecGrp.connections.allowFromAnyIpv4(ec2.Port.tcp(80));
@@ -247,6 +263,14 @@ class LaravelService extends Stack {
         name: "laravelService",
         cloudMapNamespace: dnsNamespace,
       },
+      deploymentController:  {
+        type: ecs.DeploymentControllerType.CODE_DEPLOY,
+      }
+    });
+
+    new ssm.StringParameter(this, 'laravelServiceArn', {
+      stringValue: laravelService.serviceArn,
+      parameterName: `/${props.serviceName}/${environment}/laravelServiceArn`
     });
 
     const albSecGrp = new ec2.SecurityGroup(
