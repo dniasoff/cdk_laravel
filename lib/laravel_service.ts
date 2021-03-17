@@ -96,13 +96,6 @@ class LaravelService extends Stack {
       vpc: props.vpc,
     });
 
-
-    // Add SSM parameter for cache endpoint
-    const param = new ssm.StringParameter(this, 'clusterName', {
-      stringValue: cluster.clusterName,
-      parameterName: `/${props.serviceName}/${environment}/clusterName`
-    });
-
     // Cloud Map Namespace
     const dnsNamespace = new servicediscovery.PrivateDnsNamespace(
       this,
@@ -173,11 +166,21 @@ class LaravelService extends Stack {
       "cdk_laravel/nginx"
     );
 
+    new ssm.StringParameter(this, 'ecrRepositoryNginx', {
+      stringValue: nginxServicerepo.repositoryName,
+      parameterName: `/${props.serviceName}/${environment}/ecrRepositoryNginx`
+    });
+
     const laravelServicerepo = ecr.Repository.fromRepositoryName(
       this,
       "laravelServiceRepo",
       "cdk_laravel/laravel"
     );
+
+    new ssm.StringParameter(this, 'ecrRepositoryLaravel', {
+      stringValue: laravelServicerepo.repositoryName,
+      parameterName: `/${props.serviceName}/${environment}/laravelRepositoryNginx`
+    });
 
     let tag: string;
     (environment == "production") ? tag = "latest" : tag = branch;
@@ -220,6 +223,8 @@ class LaravelService extends Stack {
       }
     );
 
+   
+
     nginxServiceContainer.addContainerDependencies({
       container: laravelServiceContainer,
       condition: ecs.ContainerDependencyCondition.START,
@@ -242,10 +247,9 @@ class LaravelService extends Stack {
         vpc: props.vpc,
       }
     );
-    new ssm.StringParameter(this, 'laravelSecurityGroup', {
-      stringValue: laravelServiceSecGrp.uniqueId,
-      parameterName: `/${props.serviceName}/${environment}/laravelSecurityGroup`
-    });
+   
+
+  
 
 
     laravelServiceSecGrp.connections.allowFromAnyIpv4(ec2.Port.tcp(80));
@@ -262,9 +266,6 @@ class LaravelService extends Stack {
       cloudMapOptions: {
         name: "laravelService",
         cloudMapNamespace: dnsNamespace,
-      },
-      deploymentController: {
-        type: ecs.DeploymentControllerType.CODE_DEPLOY,
       }
     });
 
@@ -316,44 +317,18 @@ class LaravelService extends Stack {
 
     });
 
-    const laravelServiceTargetGroup1 = new elbv2.ApplicationTargetGroup(this, 
-      "nginxServiceTargetGroup1",
-      {
-        port: 80,
-        healthCheck: {
-          path: "/login",
-          interval: cdk.Duration.seconds(30),
-          timeout: cdk.Duration.seconds(3),
-        },
-        targets: [laravelService],
-        stickinessCookieDuration: cdk.Duration.seconds(86500),
-        vpc: props.vpc
-
-      }
-    );
-
-    const laravelServiceTargetGroup2 = new elbv2.ApplicationTargetGroup(this, 
-      "nginxServiceTargetGroup2",
-      {
-        port: 80,
-        healthCheck: {
-          path: "/login",
-          interval: cdk.Duration.seconds(30),
-          timeout: cdk.Duration.seconds(3),
-        },
-        targets: [laravelService],
-        stickinessCookieDuration: cdk.Duration.seconds(86500),
-        vpc: props.vpc,
-        
-
-      }
-    );
-
-    httpsApiListener.addTargetGroups("ServiceTargetGroup", 
+    const laravelServiceTargetGroup= httpsApiListener.addTargets("nginxServiceTargetGroup",
     {
-      targetGroups: [laravelServiceTargetGroup1,laravelServiceTargetGroup2]
-    })
-
+      port: 80,
+      healthCheck: {
+        path: "/login",
+        interval: cdk.Duration.seconds(30),
+        timeout: cdk.Duration.seconds(3),
+      },
+      targets: [laravelService],
+      stickinessCookieDuration: cdk.Duration.seconds(86500),      
+    }
+  );
 
     // Add LB DNS entries
 
@@ -380,8 +355,6 @@ class LaravelService extends Stack {
       });
 
     }
-
-
 
     cdk.Tags.of(this).add("branch", branch);
   }
