@@ -2,5 +2,7 @@
     "serviceName": "laravel-demo",
     "domain": "kodespace.co.uk",
     "hostedZoneId": "Z016552312S0N2LCUKQCF",
-    "vpcCidr": "10.10.0.0/16"
+    "vpcCidr": "10.10.0.0/16",
+    "cdkAccountId": "971473982600",
+    "cdkRegion": "eu-west-2"
 }

@@ -20,6 +20,8 @@ interface GlobalProperties {
     cacheClusterDevelopment: elasticache.CfnCacheCluster;
     rdsSg: ec2.SecurityGroup;
     redisSg: ec2.SecurityGroup;
+    cdkAccountId: string;
+    cdkRegion: string;
   }
 
   export { GlobalProperties }

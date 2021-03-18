@@ -30,8 +30,8 @@ import { SharedStack } from "./shared_stack";
 
 
 class LaravelService extends Stack {
-  constructor(scope: App, id: string, props: GlobalProperties, branch: string, redisInstance: number) {
-    super(scope, id);
+  constructor(scope: App, id: string, props: cdk.StackProps, globalProps: GlobalProperties, branch: string, redisInstance: number) {
+    super(scope, id, props);
 
     let bucket: s3.Bucket;
     let dbCluster: rds.ServerlessCluster;
@@ -39,18 +39,14 @@ class LaravelService extends Stack {
     let environment: string;
 
     (branch == "master") ? environment = "production" : environment = branch;
-    (environment == "production") ? dbCluster = props.rdsClusterProduction : dbCluster = props.rdsClusterDevelopment;
-    (environment == "production") ? cacheCluster = props.cacheClusterProduction : cacheCluster = props.cacheClusterDevelopment;
+    (environment == "production") ? dbCluster = globalProps.rdsClusterProduction : dbCluster = globalProps.rdsClusterDevelopment;
+    (environment == "production") ? cacheCluster = globalProps.cacheClusterProduction : cacheCluster = globalProps.cacheClusterDevelopment;
 
-    const imageTag = new ssm.CfnParameter(scope, "imageTag", {
-      type: "string",
-      value: "default",
-      description: "Image Tag to use for container images. If default is used, than the relevant branch will be chosen" 
-    });
+ 
 
     if (environment == "production") {
 
-      bucket = new s3.Bucket(this, `${props.serviceName}-static-content-production`, {
+      bucket = new s3.Bucket(this, `${globalProps.serviceName}-static-content-production`, {
         publicReadAccess: true,
         websiteIndexDocument: 'index.html',
         websiteErrorDocument: 'error.html',
@@ -60,7 +56,7 @@ class LaravelService extends Stack {
     }
     else {
 
-      bucket = new s3.Bucket(this, `${props.serviceName}-static-content-${branch}`, {
+      bucket = new s3.Bucket(this, `${globalProps.serviceName}-static-content-${branch}`, {
         publicReadAccess: true,
         websiteIndexDocument: 'index.html',
         websiteErrorDocument: 'error.html',
@@ -72,8 +68,8 @@ class LaravelService extends Stack {
 
     const distribution = new cloudfront.CloudFrontWebDistribution(this, 'SiteDistribution', {
       aliasConfiguration: {
-        acmCertRef: props.sslCertificate.certificateArn,
-        names: [`${environment}-static.${props.domain}`],
+        acmCertRef: globalProps.sslCertificate.certificateArn,
+        names: [`${environment}-static.${globalProps.domain}`],
         sslMethod: cloudfront.SSLMethod.SNI,
         securityPolicy: cloudfront.SecurityPolicyProtocol.TLS_V1_1_2016,
       },
@@ -89,15 +85,15 @@ class LaravelService extends Stack {
     });
 
     new route53.ARecord(this, 'SiteAliasRecord', {
-      recordName: `${environment}-static.${props.domain}`,
+      recordName: `${environment}-static.${globalProps.domain}`,
       target: route53.RecordTarget.fromAlias(new targets.CloudFrontTarget(distribution)),
-      zone: props.hostedZone
+      zone: globalProps.hostedZone
     });
 
 
     // ECS Cluster
     const cluster = new ecs.Cluster(this, "Fargate Cluster", {
-      vpc: props.vpc,
+      vpc: globalProps.vpc,
     });
 
     // Cloud Map Namespace
@@ -106,7 +102,7 @@ class LaravelService extends Stack {
       "DnsNamespace",
       {
         name: "http-api.local",
-        vpc: props.vpc,
+        vpc: globalProps.vpc,
         description: "Private DnsNamespace for Microservices",
       }
     );
@@ -175,16 +171,20 @@ class LaravelService extends Stack {
     );
 
 
-    if (imageTag.value =="default") {
-      (environment == "production") ? imageTag.value = "latest" : imageTag.value = branch;
+    let imageTag:string  = process.env.CDK_IMAGE_TAG || "undefined";
+
+    if ( imageTag == 'undefined')
+    {
+      (environment == "production") ? imageTag = "latest" : imageTag= branch;
     }
+
     // Task Containers
     const nginxServiceContainer = laravelServiceTaskDefinition.addContainer(
       "nginxServiceContainer",
       {
         image: ecs.ContainerImage.fromEcrRepository(
           nginxServicerepo,
-          imageTag.value,
+          imageTag,
         ),
         logging: nginxServiceLogDriver,
       }
@@ -195,7 +195,7 @@ class LaravelService extends Stack {
       {
         image: ecs.ContainerImage.fromEcrRepository(
           laravelServicerepo,
-          imageTag.value,
+          imageTag,
         ),
         logging: laravelServiceLogDriver,
         environment:
@@ -237,7 +237,7 @@ class LaravelService extends Stack {
       {
         allowAllOutbound: true,
         securityGroupName: "laravelServiceSecurityGroup",
-        vpc: props.vpc,
+        vpc: globalProps.vpc,
       }
     );
    
@@ -270,7 +270,7 @@ class LaravelService extends Stack {
       {
         allowAllOutbound: true,
         securityGroupName: "laravelAlbSecurityGroup",
-        vpc: props.vpc,
+        vpc: globalProps.vpc,
       }
     );
 
@@ -282,7 +282,7 @@ class LaravelService extends Stack {
       this,
       "httpapiInternalALB",
       {
-        vpc: props.vpc,
+        vpc: globalProps.vpc,
         internetFacing: true,
       }
     );
@@ -293,9 +293,9 @@ class LaravelService extends Stack {
 
 
     const albSslCert = new acm.DnsValidatedCertificate(this, 'albSiteCertificate', {
-      domainName: props.domain,
-      subjectAlternativeNames: [`*.${props.domain}`],
-      hostedZone: props.hostedZone,
+      domainName: globalProps.domain,
+      subjectAlternativeNames: [`*.${globalProps.domain}`],
+      hostedZone: globalProps.hostedZone,
     })
 
     const httpsApiListener = httpALB.addListener("httpsapiListener", {
@@ -325,23 +325,23 @@ class LaravelService extends Stack {
     if (environment == "production") {
 
       new route53.ARecord(this, 'AlbAliasRecord', {
-        recordName: `www.${props.domain}`,
+        recordName: `www.${globalProps.domain}`,
         target: route53.RecordTarget.fromAlias(new targets.LoadBalancerTarget(httpALB)),
-        zone: props.hostedZone
+        zone: globalProps.hostedZone
       });
 
       new route53.ARecord(this, 'AlbAliasRecord2', {
-        recordName: `${props.domain}`,
+        recordName: `${globalProps.domain}`,
         target: route53.RecordTarget.fromAlias(new targets.LoadBalancerTarget(httpALB)),
-        zone: props.hostedZone
+        zone: globalProps.hostedZone
       });
 
     } else {
 
       new route53.ARecord(this, 'AlbAliasRecord', {
-        recordName: `${environment}.${props.domain}`,
+        recordName: `${environment}.${globalProps.domain}`,
         target: route53.RecordTarget.fromAlias(new targets.LoadBalancerTarget(httpALB)),
-        zone: props.hostedZone
+        zone: globalProps.hostedZone
       });
 
     }

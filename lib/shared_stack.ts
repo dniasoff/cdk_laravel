@@ -12,13 +12,13 @@ import { GlobalProperties } from "./shared_classes";
 class SharedStack extends Stack {
     
     
-    constructor(scope: App, id: string, props: GlobalProperties) {
-        super(scope, id);
+    constructor(scope: App, id: string, props: cdk.StackProps, globalProps: GlobalProperties) {
+        super(scope, id, props);
 
 
         //create vpc
-        props.vpc  = new ec2.Vpc(this, `${id}-vpc`, {
-            cidr: props.vpcCidr,
+        globalProps.vpc  = new ec2.Vpc(this, `${id}-vpc`, {
+            cidr: globalProps.vpcCidr,
             maxAzs: 2,
             natGateways: 1,
             enableDnsSupport: true,
@@ -28,35 +28,35 @@ class SharedStack extends Stack {
         // create security groups
 
         const bastionSg = new ec2.SecurityGroup(this, `${id}-bastion`, {
-            vpc: props.vpc ,
+            vpc: globalProps.vpc ,
             allowAllOutbound: true,
             description: 'Bastion Security Group'
         });
         bastionSg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22), 'SSH frm anywhere');
 
-        props.rdsSg = new ec2.SecurityGroup(this, `${id}-db-cluster`, {
-            vpc: props.vpc ,
+        globalProps.rdsSg = new ec2.SecurityGroup(this, `${id}-db-cluster`, {
+            vpc: globalProps.vpc ,
             allowAllOutbound: true,
             description: 'RDS Security Group'
         });
-        props.rdsSg.addIngressRule(ec2.Peer.ipv4(props.vpcCidr), ec2.Port.tcp(3306), 'MySql Traffic');
+        globalProps.rdsSg.addIngressRule(ec2.Peer.ipv4(globalProps.vpcCidr), ec2.Port.tcp(3306), 'MySql Traffic');
 
-        props.redisSg = new ec2.SecurityGroup(this, `${id}-redis-cluster`, {
-            vpc: props.vpc ,
+        globalProps.redisSg = new ec2.SecurityGroup(this, `${id}-redis-cluster`, {
+            vpc: globalProps.vpc ,
             allowAllOutbound: true,
             description: 'Redis Security Group'
         });
-        props.redisSg.addIngressRule(ec2.Peer.ipv4(props.vpcCidr), ec2.Port.tcp(6379), 'Redis Traffic');
+        globalProps.redisSg.addIngressRule(ec2.Peer.ipv4(globalProps.vpcCidr), ec2.Port.tcp(6379), 'Redis Traffic');
 
         // create bastion
 
-        const publicSubnets = props.vpc .selectSubnets({
+        const publicSubnets = globalProps.vpc .selectSubnets({
             subnetType: ec2.SubnetType.PUBLIC,
         });
 
         const bastion = new ec2.BastionHostLinux(this, "bastion",
             {
-                vpc: props.vpc ,
+                vpc: globalProps.vpc ,
                 instanceType: ec2.InstanceType.of(ec2.InstanceClass.T2, ec2.InstanceSize.MICRO),
                 securityGroup: bastionSg,
                 subnetSelection: publicSubnets,
@@ -64,15 +64,15 @@ class SharedStack extends Stack {
             }
         )
 
-        props.hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, "zone", {
-            zoneName: props.domain,
-            hostedZoneId: props.hostedZoneId
+        globalProps.hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, "zone", {
+            zoneName: globalProps.domain,
+            hostedZoneId: globalProps.hostedZoneId
         });
 
-        props.sslCertificate = new acm.DnsValidatedCertificate(this, 'SiteCertificate', {
-            domainName: props.domain,
-            subjectAlternativeNames: [ `*.${props.domain}`],
-            hostedZone: props.hostedZone,
+        globalProps.sslCertificate = new acm.DnsValidatedCertificate(this, 'SiteCertificate', {
+            domainName: globalProps.domain,
+            subjectAlternativeNames: [ `*.${globalProps.domain}`],
+            hostedZone: globalProps.hostedZone,
             region: 'us-east-1', // Cloudfront only checks this region for certificates.
         })
 

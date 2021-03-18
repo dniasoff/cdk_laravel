@@ -8,8 +8,8 @@ import { GlobalProperties } from "./shared_classes";
 
 class RedisCluster extends Stack {
   
-  constructor(scope: App, id: string, props: GlobalProperties, isProduction: boolean) {
-    super(scope, id);
+  constructor(scope: App, id: string, props: cdk.StackProps, globalProps: GlobalProperties, isProduction: boolean) {
+    super(scope, id, props);
 
     let environment: string;
     let redisCluster : elasticache.CfnCacheCluster;
@@ -19,7 +19,7 @@ class RedisCluster extends Stack {
     // create private subnets groups (needed for redis) 
     const subnetGroup = new elasticache.CfnSubnetGroup(this, `${id}-subnet-group`, {
       description: `List of subnets used for redis cache ${id}`,
-      subnetIds: props.vpc .privateSubnets.map(function (subnet) {
+      subnetIds: globalProps.vpc .privateSubnets.map(function (subnet) {
         return subnet.subnetId;
       })
     });
@@ -32,17 +32,16 @@ class RedisCluster extends Stack {
       autoMinorVersionUpgrade: true,
       cacheSubnetGroupName: subnetGroup.ref,
       vpcSecurityGroupIds: [
-        props.redisSg.securityGroupId
+        globalProps.redisSg.securityGroupId
       ]
     });
 
-    (isProduction) ? props.cacheClusterProduction = redisCluster : props.cacheClusterDevelopment = redisCluster;
+    (isProduction) ? globalProps.cacheClusterProduction = redisCluster : globalProps.cacheClusterDevelopment = redisCluster;
 
     // Add SSM parameter for cache endpoint
     const param = new ssm.StringParameter(this, 'db-secret', {
       stringValue: redisCluster.attrRedisEndpointAddress,
-      parameterName: `/${props.serviceName}/${environment}/cacheEndpoint`
-      // allowedPattern: '.*',
+      parameterName: `/${globalProps.serviceName}/${environment}/cacheEndpoint`
     });
     
     cdk.Tags.of(this).add("branch", environment);
