@@ -42,7 +42,11 @@ class LaravelService extends Stack {
     (environment == "production") ? dbCluster = props.rdsClusterProduction : dbCluster = props.rdsClusterDevelopment;
     (environment == "production") ? cacheCluster = props.cacheClusterProduction : cacheCluster = props.cacheClusterDevelopment;
 
-
+    const imageTag = new ssm.CfnParameter(scope, "imageTag", {
+      type: "string",
+      value: "default",
+      description: "Image Tag to use for container images. If default is used, than the relevant branch will be chosen" 
+    });
 
     if (environment == "production") {
 
@@ -112,10 +116,6 @@ class LaravelService extends Stack {
       assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
     });
 
-    new ssm.StringParameter(this, 'ecsTaskExecutionRoleArn', {
-      stringValue: taskrole.roleArn,
-      parameterName: `/${props.serviceName}/${environment}/ecsTaskExecutionRoleArn`
-    });
 
     taskrole.addManagedPolicy(
       iam.ManagedPolicy.fromAwsManagedPolicyName(
@@ -166,10 +166,7 @@ class LaravelService extends Stack {
       "cdk_laravel/nginx"
     );
 
-    new ssm.StringParameter(this, 'ecrRepositoryNginx', {
-      stringValue: nginxServicerepo.repositoryName,
-      parameterName: `/${props.serviceName}/${environment}/ecrRepositoryNginx`
-    });
+  
 
     const laravelServicerepo = ecr.Repository.fromRepositoryName(
       this,
@@ -177,21 +174,17 @@ class LaravelService extends Stack {
       "cdk_laravel/laravel"
     );
 
-    new ssm.StringParameter(this, 'ecrRepositoryLaravel', {
-      stringValue: laravelServicerepo.repositoryName,
-      parameterName: `/${props.serviceName}/${environment}/laravelRepositoryNginx`
-    });
 
-    let tag: string;
-    (environment == "production") ? tag = "latest" : tag = branch;
-
+    if (imageTag.value =="default") {
+      (environment == "production") ? imageTag.value = "latest" : imageTag.value = branch;
+    }
     // Task Containers
     const nginxServiceContainer = laravelServiceTaskDefinition.addContainer(
       "nginxServiceContainer",
       {
         image: ecs.ContainerImage.fromEcrRepository(
           nginxServicerepo,
-          tag,
+          imageTag.value,
         ),
         logging: nginxServiceLogDriver,
       }
@@ -202,7 +195,7 @@ class LaravelService extends Stack {
       {
         image: ecs.ContainerImage.fromEcrRepository(
           laravelServicerepo,
-          tag,
+          imageTag.value,
         ),
         logging: laravelServiceLogDriver,
         environment:
@@ -269,10 +262,7 @@ class LaravelService extends Stack {
       }
     });
 
-    new ssm.StringParameter(this, 'laravelServiceArn', {
-      stringValue: laravelService.serviceArn,
-      parameterName: `/${props.serviceName}/${environment}/laravelServiceArn`
-    });
+  
 
     const albSecGrp = new ec2.SecurityGroup(
       this,
