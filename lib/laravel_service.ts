@@ -16,12 +16,13 @@ import elbv2 = require('@aws-cdk/aws-elasticloadbalancingv2');
 import elasticache = require('@aws-cdk/aws-elasticache');
 import targets = require('@aws-cdk/aws-route53-targets/lib');
 
-import { GlobalProperties } from "./global_properties";
+import { capitalizeFirstLetter, GlobalProperties } from "./global_properties";
 
 class LaravelService extends cdk.Stack {
   constructor(scope: cdk.App, id: string, props: cdk.StackProps, globalProps: GlobalProperties, branch: string, redisInstance: number) {
     super(scope, id, props);
 
+    //Set up variables
 
     let dbCluster: rds.ServerlessCluster;
     let cacheCluster: elasticache.CfnCacheCluster;
@@ -32,17 +33,18 @@ class LaravelService extends cdk.Stack {
     (environment == "production") ? dbCluster = globalProps.rdsClusterProduction : dbCluster = globalProps.rdsClusterDevelopment;
     (environment == "production") ? cacheCluster = globalProps.cacheClusterProduction : cacheCluster = globalProps.cacheClusterDevelopment;
     (environment == "production") ? removalPolicy = cdk.RemovalPolicy.RETAIN : removalPolicy = cdk.RemovalPolicy.DESTROY;
+    let instanceName: string = `${globalProps.serviceName}${capitalizeFirstLetter(environment)}`
 
     //create s3 bucket behind a cloudfront distribution to host static assets and dns entry to point to cloudfront.
 
-    const bucket = new s3.Bucket(this, `${globalProps.serviceName}-static-content-production`, {
+    const bucket = new s3.Bucket(this, `${globalProps.serviceName}-${environment}-static-content`, {
       publicReadAccess: true,
       websiteIndexDocument: 'index.html',
       websiteErrorDocument: 'error.html',
       removalPolicy: removalPolicy,
     });
 
-    const distribution = new cloudfront.CloudFrontWebDistribution(this, 'SiteDistribution', {
+    const distribution = new cloudfront.CloudFrontWebDistribution(this, `${instanceName}SiteDistribution`, {
       aliasConfiguration: {
         acmCertRef: globalProps.cloudfrontSslCertificate.certificateArn,
         names: [`${environment}-static.${globalProps.domain}`],
@@ -60,7 +62,7 @@ class LaravelService extends cdk.Stack {
       ]
     });
 
-    new route53.ARecord(this, 'SiteAliasRecord', {
+    new route53.ARecord(this, `${instanceName}SiteAliasRecord`, {
       recordName: `${environment}-static.${globalProps.domain}`,
       target: route53.RecordTarget.fromAlias(new targets.CloudFrontTarget(distribution)),
       zone: globalProps.hostedZone
@@ -68,7 +70,7 @@ class LaravelService extends cdk.Stack {
 
     //Create an ECS cluster and task defintion to host the 2 containers needed for Laravel (NGINX & Laravel)
 
-    const cluster = new ecs.Cluster(this, "Fargate Cluster", {
+    const cluster = new ecs.Cluster(this, `${instanceName}FargateCluster`, {
       vpc: globalProps.vpc,
     });
 
@@ -83,7 +85,7 @@ class LaravelService extends cdk.Stack {
           }
         );
 
-    const taskrole = new iam.Role(this, "ecsTaskExecutionRole", {
+    const taskrole = new iam.Role(this, `${instanceName}EcsTaskExecutionRole`, {
       assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
     });
 
@@ -93,9 +95,9 @@ class LaravelService extends cdk.Stack {
       )
     );
 
-    const laravelServiceTaskDefinition = new ecs.FargateTaskDefinition(
+    const ecsServiceTaskDefinition = new ecs.FargateTaskDefinition(
       this,
-      "laravelTaskDef",
+      `${instanceName}EcsServiceTaskDef`,
       {
         memoryLimitMiB: 512,
         cpu: 256,
@@ -107,7 +109,7 @@ class LaravelService extends cdk.Stack {
 
     const fargateServiceSecGrp = new ec2.SecurityGroup(
       this,
-      "laravelServiceSecurityGroup",
+      `${instanceName}EcsServiceSecurityGroup`,
       {
         allowAllOutbound: true,
         securityGroupName: "laravelServiceSecurityGroup",
@@ -116,9 +118,9 @@ class LaravelService extends cdk.Stack {
     );
     fargateServiceSecGrp.connections.allowFromAnyIpv4(ec2.Port.tcp(80));
 
-    const laravelService = new ecs.FargateService(this, "laravelService", {
+    const laravelService = new ecs.FargateService(this, `${instanceName}EcsService`, {
       cluster: cluster,
-      taskDefinition: laravelServiceTaskDefinition,
+      taskDefinition: ecsServiceTaskDefinition,
       assignPublicIp: false,
       desiredCount: 2,
       securityGroup: fargateServiceSecGrp,
@@ -133,15 +135,16 @@ class LaravelService extends cdk.Stack {
     
 
     // Log Groups
-    const nginxServiceLogGroup = new logs.LogGroup(this, "nginxServiceLogGroup", {
+    const nginxServiceLogGroup = new logs.LogGroup(
+      this, 
+      `${instanceName}NginxServiceLogGroup`, {
       logGroupName: "/ecs/nginxService",
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
     const laravelServiceLogGroup = new logs.LogGroup(
       this,
-      "laravelServiceLogGroup",
-      {
+      `${instanceName}LaravelServiceLogGroup`, {
         logGroupName: "/ecs/laravelService",
         removalPolicy: cdk.RemovalPolicy.DESTROY,
       }
@@ -149,24 +152,24 @@ class LaravelService extends cdk.Stack {
 
     const nginxServiceLogDriver = new ecs.AwsLogDriver({
       logGroup: nginxServiceLogGroup,
-      streamPrefix: "nginxService",
+      streamPrefix: `${instanceName}NginxService`,
     });
 
     const laravelServiceLogDriver = new ecs.AwsLogDriver({
       logGroup: laravelServiceLogGroup,
-      streamPrefix: "laravelService",
+      streamPrefix: `${instanceName}LaravelService`,
     });
 
     // Amazon ECR Repositories
     const nginxServicerepo = ecr.Repository.fromRepositoryName(
       this,
-      "nginxServiceRepo",
+      `${instanceName}NginxServiceRepo`,
       "cdk_laravel/nginx"
     );
 
     const laravelServicerepo = ecr.Repository.fromRepositoryName(
       this,
-      "laravelServiceRepo",
+      `${instanceName}LaravelServiceRepo`,
       "cdk_laravel/laravel"
     );
 
@@ -178,8 +181,8 @@ class LaravelService extends cdk.Stack {
     }
 
     // Task Containers
-    const nginxServiceContainer = laravelServiceTaskDefinition.addContainer(
-      "nginxServiceContainer",
+    const nginxServiceContainer = ecsServiceTaskDefinition.addContainer(
+      `${instanceName}NginxServiceContainer`,
       {
         image: ecs.ContainerImage.fromEcrRepository(
           nginxServicerepo,
@@ -189,8 +192,8 @@ class LaravelService extends cdk.Stack {
       }
     );
 
-    const laravelServiceContainer = laravelServiceTaskDefinition.addContainer(
-      "laravelServiceContainer",
+    const laravelServiceContainer = ecsServiceTaskDefinition.addContainer(
+      `${instanceName}LaravelServiceContainer`,
       {
         image: ecs.ContainerImage.fromEcrRepository(
           laravelServicerepo,
@@ -232,7 +235,7 @@ class LaravelService extends cdk.Stack {
 
     const albSecGrp = new ec2.SecurityGroup(
       this,
-      "albServiceSecurityGroup",
+      `${instanceName}AlbServiceSecurityGroup`,
       {
         allowAllOutbound: true,
         securityGroupName: "laravelAlbSecurityGroup",
@@ -244,7 +247,7 @@ class LaravelService extends cdk.Stack {
 
     const httpALB = new elbv2.ApplicationLoadBalancer(
       this,
-      "httpapiInternalALB",
+      `${instanceName}Alb`,
       {
         vpc: globalProps.vpc,
         internetFacing: true,
@@ -253,7 +256,7 @@ class LaravelService extends cdk.Stack {
     httpALB.addSecurityGroup(albSecGrp);
     httpALB.addRedirect();
 
-    const httpsApiListener = httpALB.addListener("httpsapiListener", {
+    const httpsApiListener = httpALB.addListener("HttpsApiListener", {
       port: 443,
       protocol: elbv2.ApplicationProtocol.HTTPS,
       certificates: [elbv2.ListenerCertificate.fromArn(globalProps.albSslCertificate.certificateArn)],
@@ -262,7 +265,7 @@ class LaravelService extends cdk.Stack {
 
     });
 
-    const laravelServiceTargetGroup = httpsApiListener.addTargets("nginxServiceTargetGroup",
+    const laravelServiceTargetGroup = httpsApiListener.addTargets(`${instanceName}NginxServiceTargetGroup`,
       {
         port: 80,
         healthCheck: {
@@ -279,13 +282,13 @@ class LaravelService extends cdk.Stack {
 
     if (environment == "production") {
 
-      new route53.ARecord(this, 'AlbAliasRecord', {
+      new route53.ARecord(this, `${instanceName}AlbAliasRecord`, {
         recordName: `www.${globalProps.domain}`,
         target: route53.RecordTarget.fromAlias(new targets.LoadBalancerTarget(httpALB)),
         zone: globalProps.hostedZone
       });
 
-      new route53.ARecord(this, 'AlbAliasRecord2', {
+      new route53.ARecord(this, `${instanceName}AlbAliasRecord2`, {
         recordName: `${globalProps.domain}`,
         target: route53.RecordTarget.fromAlias(new targets.LoadBalancerTarget(httpALB)),
         zone: globalProps.hostedZone
@@ -293,7 +296,7 @@ class LaravelService extends cdk.Stack {
 
     } else {
 
-      new route53.ARecord(this, 'AlbAliasRecord', {
+      new route53.ARecord(this, `${instanceName}AlbAliasRecord`, {
         recordName: `${environment}.${globalProps.domain}`,
         target: route53.RecordTarget.fromAlias(new targets.LoadBalancerTarget(httpALB)),
         zone: globalProps.hostedZone
@@ -304,5 +307,6 @@ class LaravelService extends cdk.Stack {
     cdk.Tags.of(this).add("branch", branch);
   }
 }
+
 
 export { LaravelService }
