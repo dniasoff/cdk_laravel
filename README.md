@@ -23,7 +23,7 @@ A deployment of Laravel in this example consists of the following AWS Resources
 
 In order to emulate a real life use case, I chose to divide the resources into 3 main sections and the diagram below should help explain it
 
-[environment structure](../media/cdk_structure.png?raw=true)
+[environment structure](https://raw.githubusercontent.com/dniasoff/cdk_laravel/master/media/cdk_structure.png)
 
 So for starters, there are 3 environments - develop, staging and production a.k.a. master.
 There are common resources that are used by all environments and then there are "distinct" resources (I couldn't think of a better word) that we have 2 instances of production and non-production. Creating a seperate develop and staging RDS/Cache instances was deemed expensive and unnecessary so both staging and develop share a single non-production instance. Finally there are resources that are unique to each service such as s3 buckets and ECS clusters.
