@@ -238,7 +238,7 @@ class DedicatedServiceInstance extends cdk.Stack {
       `${instanceName}AlbServiceSecurityGroup`,
       {
         allowAllOutbound: true,
-        securityGroupName: "laravelAlbSecurityGroup",
+        securityGroupName: `${instanceName}LaravelAlbSecurityGroup`,
         vpc: globalProps.vpc,
       }
     );
