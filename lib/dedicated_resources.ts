@@ -112,7 +112,7 @@ class DedicatedServiceInstance extends cdk.Stack {
       `${instanceName}EcsServiceSecurityGroup`,
       {
         allowAllOutbound: true,
-        securityGroupName: "laravelServiceSecurityGroup",
+        securityGroupName: `${instanceName}LaravelServiceSecurityGroup`,
         vpc: globalProps.vpc,
       }
     );
