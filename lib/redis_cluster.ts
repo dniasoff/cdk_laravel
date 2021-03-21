@@ -4,7 +4,7 @@ import elasticache = require('@aws-cdk/aws-elasticache');
 import ssm = require('@aws-cdk/aws-ssm');
 import cdk = require('@aws-cdk/core');
 import { App, Stack } from "@aws-cdk/core";
-import { GlobalProperties } from "./shared_classes";
+import { GlobalProperties } from "./global_properties";
 
 class RedisCluster extends Stack {
   
@@ -37,12 +37,6 @@ class RedisCluster extends Stack {
     });
 
     (isProduction) ? globalProps.cacheClusterProduction = redisCluster : globalProps.cacheClusterDevelopment = redisCluster;
-
-    // Add SSM parameter for cache endpoint
-    const param = new ssm.StringParameter(this, 'db-secret', {
-      stringValue: redisCluster.attrRedisEndpointAddress,
-      parameterName: `/${globalProps.serviceName}/${environment}/cacheEndpoint`
-    });
     
     cdk.Tags.of(this).add("branch", environment);
  

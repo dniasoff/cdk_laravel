@@ -2,19 +2,15 @@
 import "source-map-support/register"
 import cdk = require('@aws-cdk/core');
 import ec2 = require('@aws-cdk/aws-ec2');
-import { App, Stack } from "@aws-cdk/core";
 import route53 = require('@aws-cdk/aws-route53');
 import acm = require('@aws-cdk/aws-certificatemanager')
-import iam = require("@aws-cdk/aws-iam");
-import { GlobalProperties } from "./shared_classes";
+
+import { GlobalProperties } from "./global_properties";
 
 
-class SharedStack extends Stack {
-    
-    
-    constructor(scope: App, id: string, props: cdk.StackProps, globalProps: GlobalProperties) {
+class SharedResources extends cdk.Stack {       
+    constructor(scope: cdk.App, id: string, props: cdk.StackProps, globalProps: GlobalProperties) {
         super(scope, id, props);
-
 
         //create vpc
         globalProps.vpc  = new ec2.Vpc(this, `${id}-vpc`, {
@@ -64,17 +60,25 @@ class SharedStack extends Stack {
             }
         )
 
+        //Create wildcard certs used by Cloudfront (hosted in us-east-1) and ALB
+
         globalProps.hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, "zone", {
             zoneName: globalProps.domain,
             hostedZoneId: globalProps.hostedZoneId
         });
 
-        globalProps.sslCertificate = new acm.DnsValidatedCertificate(this, 'SiteCertificate', {
+        globalProps.cloudfrontSslCertificate = new acm.DnsValidatedCertificate(this, 'cloudfrontSiteCertificate', {
             domainName: globalProps.domain,
             subjectAlternativeNames: [ `*.${globalProps.domain}`],
             hostedZone: globalProps.hostedZone,
             region: 'us-east-1', // Cloudfront only checks this region for certificates.
         })
+
+        globalProps.albSslCertificate  = new acm.DnsValidatedCertificate(this, 'albSiteCertificate', {
+            domainName: globalProps.domain,
+            subjectAlternativeNames: [`*.${globalProps.domain}`],
+            hostedZone: globalProps.hostedZone,
+          })
 
         cdk.Tags.of(this).add("branch", "shared");
 
@@ -83,4 +87,4 @@ class SharedStack extends Stack {
 
 }
 
-export { SharedStack }
+export { SharedResources }

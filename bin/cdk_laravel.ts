@@ -1,19 +1,16 @@
 #!/usr/bin/env node
 import 'source-map-support/register';
 import * as cdk from '@aws-cdk/core';
-import { GlobalProperties } from '../lib/shared_classes';
-import { SharedStack } from '../lib/shared_stack';
-import { Stack, App } from '@aws-cdk/core';
+
+
+
 import { LaravelService } from '../lib/laravel_service';
 import { RdsCluster } from '../lib/rds_cluster';
 import { RedisCluster } from '../lib/redis_cluster';
-import ssm = require('@aws-cdk/aws-ssm');
-
-
+import { GlobalProperties } from '../lib/global_properties';
+import { SharedResources } from '../lib/shared_resources';
 
 var globalProps: GlobalProperties = require('../settings.json');
-
-
 
 var props = {
   env: {
@@ -23,12 +20,11 @@ var props = {
 }
 
 
-
-class SharedServices extends Stack {
-  constructor(scope: App, id: string, props: cdk.StackProps) {
+class SharedServices extends cdk.Stack {
+  constructor(scope: cdk.App, id: string, props: cdk.StackProps) {
     super(scope, id, props);
 
-    new SharedStack(scope, `${id}-vpc`, props, globalProps);
+    new SharedResources(scope, `${id}-vpc`, props, globalProps);
 
     new RdsCluster(scope, `${id}-rds-prod`, props, globalProps, true);
     new RdsCluster(scope, `${id}-rds-dev`, props, globalProps, false);

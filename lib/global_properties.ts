@@ -9,7 +9,8 @@ import elasticache = require('@aws-cdk/aws-elasticache');
 interface GlobalProperties {
     serviceName: string;
     domain: string;
-    sslCertificate: acm.DnsValidatedCertificate;
+    cloudfrontSslCertificate: acm.DnsValidatedCertificate;
+    albSslCertificate: acm.DnsValidatedCertificate;
     hostedZone: route53.IHostedZone;
     hostedZoneId: string;
     vpc: ec2.Vpc;
