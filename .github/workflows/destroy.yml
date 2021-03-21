@@ -12,14 +12,14 @@ jobs:
   aws_cdk:
     runs-on: ubuntu-latest    
     steps:
-      - uses: actions/checkout@v2
-      - name: Extract branch name       
-        shell: bash
-        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
-        id: extract_branch
+      - uses: actions/checkout@v2      
       - uses: actions/setup-node@v2
         with:
           node-version: '15'
+      - name: Get service name       
+        shell: bash
+        run: echo "##[set-output name=service;]$(./scripts/GetStackName.sh)"
+        id: get_service
       - name: Install CDK       
         shell: bash
         run: |
@@ -36,7 +36,7 @@ jobs:
           CDK_SERVICE_NAME: ${{ secrets.CDK_SERVICE_NAME }}
       - name: Show Changes
         shell: bash
-        run: "cdk diff ${CDK_SERVICE_NAME}-service-${{ steps.extract_branch.outputs.branch }}"
+        run: "cdk diff {{ steps.get_service.outputs.service }}"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -44,7 +44,7 @@ jobs:
           CDK_SERVICE_NAME: ${{ secrets.CDK_SERVICE_NAME }}
       - name: Destroy
         shell: bash
-        run: "cdk destroy ${CDK_SERVICE_NAME}-service-${{ steps.extract_branch.outputs.branch }} --force"
+        run: "cdk destroy {{ steps.get_service.outputs.service }} --force"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
