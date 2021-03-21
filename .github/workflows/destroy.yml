@@ -36,7 +36,7 @@ jobs:
           CDK_SERVICE_NAME: ${{ secrets.CDK_SERVICE_NAME }}
       - name: Show Changes
         shell: bash
-        run: "cdk diff {{ steps.get_service.outputs.service }}"
+        run: "cdk diff ${{ steps.get_service.outputs.service }}"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -44,7 +44,7 @@ jobs:
           CDK_SERVICE_NAME: ${{ secrets.CDK_SERVICE_NAME }}
       - name: Destroy
         shell: bash
-        run: "cdk destroy {{ steps.get_service.outputs.service }} --force"
+        run: "cdk destroy ${{ steps.get_service.outputs.service }} --force"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
