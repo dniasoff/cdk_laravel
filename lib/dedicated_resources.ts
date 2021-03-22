@@ -74,16 +74,16 @@ class DedicatedServiceInstance extends cdk.Stack {
       vpc: globalProps.vpc,
     });
 
-        // Cloud Map Namespace
-        const dnsNamespace = new servicediscovery.PrivateDnsNamespace(
-          this,
-          "DnsNamespace",
-          {
-            name: "http-api.local",
-            vpc: globalProps.vpc,
-            description: "Private DnsNamespace for Microservices",
-          }
-        );
+    // Cloud Map Namespace
+    const dnsNamespace = new servicediscovery.PrivateDnsNamespace(
+      this,
+      `${instanceName}ServiceDiscoveryDnsNamespace`,
+      {
+        name: `${instanceName.toLowerCase()}.local`,
+        vpc: globalProps.vpc,
+        description: "Private DnsNamespace for Microservices",
+      }
+    );
 
     const taskrole = new iam.Role(this, `${instanceName}EcsTaskExecutionRole`, {
       assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
@@ -125,29 +125,29 @@ class DedicatedServiceInstance extends cdk.Stack {
       desiredCount: 2,
       securityGroup: fargateServiceSecGrp,
       cloudMapOptions: {
-        name: "laravelService",
+        name: `${instanceName}EcsServiceCloudMap`,
         cloudMapNamespace: dnsNamespace,
       }
     });
 
     //Set up task definitions using containers hosted on existing ECR repositories
     // 2 linked containers will be needed, laravel for php requests and nginx to sit in front of laravel and respond to non php requests
-    
+
 
     // Log Groups
     const nginxServiceLogGroup = new logs.LogGroup(
-      this, 
+      this,
       `${instanceName}NginxServiceLogGroup`, {
-      logGroupName: "/ecs/nginxService",
+      logGroupName: `/ecs/${instanceName}/nginxService`,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
     const laravelServiceLogGroup = new logs.LogGroup(
       this,
       `${instanceName}LaravelServiceLogGroup`, {
-        logGroupName: "/ecs/laravelService",
-        removalPolicy: cdk.RemovalPolicy.DESTROY,
-      }
+      logGroupName: `/ecs/${instanceName}/laravelService`,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    }
     );
 
     const nginxServiceLogDriver = new ecs.AwsLogDriver({
@@ -256,7 +256,7 @@ class DedicatedServiceInstance extends cdk.Stack {
     httpALB.addSecurityGroup(albSecGrp);
     httpALB.addRedirect();
 
-    const httpsApiListener = httpALB.addListener("HttpsApiListener", {
+    const httpsApiListener = httpALB.addListener(`${instanceName}HttpsApiListener`, {
       port: 443,
       protocol: elbv2.ApplicationProtocol.HTTPS,
       certificates: [elbv2.ListenerCertificate.fromArn(globalProps.albSslCertificate.certificateArn)],

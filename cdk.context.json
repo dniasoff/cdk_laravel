@@ -3,5 +3,15 @@
     "eu-west-2a",
     "eu-west-2b",
     "eu-west-2c"
+  ],
+  "availability-zones:account=971473982600:region=eu-west-1": [
+    "eu-west-1a",
+    "eu-west-1b",
+    "eu-west-1c"
+  ],
+  "availability-zones:account=918158990087:region=eu-west-2": [
+    "eu-west-2a",
+    "eu-west-2b",
+    "eu-west-2c"
   ]
 }

@@ -2,9 +2,10 @@
 import 'source-map-support/register';
 import * as cdk from '@aws-cdk/core';
 
-import { DedicatedServiceInstance } from '../lib/dedicated_resources';
 import { GlobalProperties } from '../lib/global_properties';
-import { SharedServices } from '../lib/shared_resources';
+import { CommonResources } from '../lib/common_resources';
+import { SharedResources } from '../lib/shared_resources';
+import { DedicatedServiceInstance } from '../lib/dedicated_resources';
 
 var globalProps: GlobalProperties = require('../settings.json');
 
@@ -18,7 +19,12 @@ var props = {
 const app = new cdk.App();
 
 //create shared resources
-new SharedServices(app, globalProps.serviceName, props, globalProps);
+
+
+new CommonResources(app, `${globalProps.serviceName}ResourcesCommon`, props, globalProps);
+new SharedResources(app, `${globalProps.serviceName}ResourcesProduction`, props, globalProps, true);
+new SharedResources(app, `${globalProps.serviceName}ResourcesNonProduction`, props, globalProps, false);
+
 
 //Create dedicated ECS Clusters etc for each environment
 new DedicatedServiceInstance(app, `${globalProps.serviceName}ServiceProduction`, props, globalProps, "master",0);
