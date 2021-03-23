@@ -19,17 +19,41 @@ A deployment of Laravel in this example consists of the following AWS Resources
  - ECS Fargate Cluster
  - ECS Task Definition for the Laravel and NGINX Containers
  - Application Load Balancer 
- - and many other components such as roles and security groups
+ - and many other supporting components such as roles and security groups
 
 In order to emulate a real life use case, I chose to divide the resources into 3 main sections and the diagram below should help explain it
 
 ![environment structure](https://raw.githubusercontent.com/dniasoff/cdk_laravel/master/media/cdk_structure.png)
 
 So for starters, there are 3 environments - develop, staging and production a.k.a. master.
-There are common resources that are used by all environments and then there are "distinct" resources (I couldn't think of a better word) that we have 2 instances of production and non-production. Creating a seperate develop and staging RDS/Cache instances was deemed expensive and unnecessary so both staging and develop share a single non-production instance. Finally there are resources that are unique to each service such as s3 buckets and ECS clusters.
+There are common resources that are used by all environments and then there are shared resources that might be used by multiple environments. Creating a seperate develop and staging RDS/Cache instances was deemed expensive and unnecessary so both staging and develop share a single non-production instance. Finally there are resources that are unique to each service such as s3 buckets and ECS clusters/tasks.
 
 The CDK file structure has been modelled to reflect the above real life structure.
-All the code is stored in lib directory.
+
+All the code is stored in lib directory in 4 typescript files.
+
+to deploy this code you will need the following 
+
+- AWS credentials configured in your environment
+- A recent version of node and npm installed
+
+Then you will need to checkout this repo, edit the settings.json to match your requirements and then run the following commands
+
+```bash
+sudo npm install -g typescript
+sudo npm install -g aws-cdk
+npm install
+
+cdk synth --all # - creates the cloud formation templates (stored in cdk.out dir)
+cdk diff ${STACK_TO_DEPLOY} - shows differences
+cdk deploy ${STACK_TO_DEPLOY} - uploads stack to cloudformation and triggers a deploy/update
+```
+
+${STACK_TO_DEPLOY} is made up of the following - "${SERVICE_NAME}Service${SERVICE_INSTANCE}" 
+
+${SERVICE_NAME} is stored in settings.json
+
+${SERVICE_INSTANCE} and this should be the branch you are deploying (currently hard coded to master/develop/staging)
 
 You can look at the github actions files to see the deployment workflow. There are a number of different actions 
 
@@ -38,5 +62,17 @@ You can look at the github actions files to see the deployment workflow. There a
  3. Destroy workflow -  this is a [`workflow_dispatch`](https://docs.github.com/en/webhooks/event-payloads/#workflow_dispatch) event triggered manually whenever you want to destroy the infrastructure (branch specific)
  4. Destroy All workflow -  this is a [`workflow_dispatch`](https://docs.github.com/en/webhooks/event-payloads/#workflow_dispatch) event triggered manually whenever you want to destroy all instances of the infrastructure
  5. ECR Container update - this is a [`repository_dispatch`](https://docs.github.com/en/webhooks/event-payloads/#repository_dispatch) event triggered by by a webhook whenever the original laravel container code is updated and tells ECS to use the new container images.
+
+There are around 400 lines of code and all 3 stacks (production/develop/staging) creates around 200 resources - make of that what you will :) These resources can easily be viewed in the AWS CloudFormation console
+
+To destroy the environment run;
+
+```
+cdk deploy {STACK_TO_DELETE}
+
+#or
+
+cdk deploy --all
+```
 
 
