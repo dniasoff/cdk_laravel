@@ -30,9 +30,9 @@ There are common resources that are used by all environments and then there are 
 
 The CDK file structure has been modelled to reflect the above real life structure.
 
-All the code is stored in lib directory in 4 typescript files.
+The main code is contained in lib directory in 4 typescript files. The entrypoint is bin/cdk_laravel.ts
 
-to deploy this code you will need the following 
+To deploy this code you will need the following 
 
 - AWS credentials configured in your environment
 - A recent version of node and npm installed
@@ -40,8 +40,8 @@ to deploy this code you will need the following
 Then you will need to checkout this repo, edit the settings.json to match your requirements and then run the following commands
 
 ```bash
-sudo npm install -g typescript
-sudo npm install -g aws-cdk
+sudo npm install -g typescript # globally installs typescript
+sudo npm install -g aws-cdk # globally installs the CDK tools
 npm install
 
 cdk synth --all # - creates the cloud formation templates (stored in cdk.out dir)
@@ -70,7 +70,7 @@ To destroy the environment run;
 ```
 cdk deploy {STACK_TO_DELETE}
 
-#or
+# or
 
 cdk deploy --all
 ```
