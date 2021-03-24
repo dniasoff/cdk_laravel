@@ -1,6 +1,6 @@
 # Welcome to my first CDK TypeScript project!
 
-This project was created to help me learn about [AWS CDK](https://docs.aws.amazon.com/cdk/latest/guide/home.html) , it's benefits over traditional YAML or JSON type IaaC such as CloudFormation and Terraform and understand how it can function as part of a complete DevOps pipeline.
+This project was created to help me learn about [AWS CDK](https://docs.aws.amazon.com/cdk/latest/guide/home.html) , it's benefits over traditional YAML or JSON type IaC such as CloudFormation and Terraform and understand how it can function as part of a complete DevOps pipeline.
 
 To achieve this I created an imaginary use case of a sample Laravel project and created a complete DevOps pipeline including develop/staging/master branches.
 
@@ -45,8 +45,8 @@ sudo npm install -g aws-cdk # globally installs the CDK tools
 npm install
 
 cdk synth --all # - creates the cloud formation templates (stored in cdk.out dir)
-cdk diff ${STACK_TO_DEPLOY} - shows differences
-cdk deploy ${STACK_TO_DEPLOY} - uploads stack to cloudformation and triggers a deploy/update
+cdk diff ${STACK_TO_DEPLOY} # - shows differences
+cdk deploy ${STACK_TO_DEPLOY} #- uploads stack to cloudformation and triggers a deploy/update
 ```
 
 ${STACK_TO_DEPLOY} is made up of the following - "${SERVICE_NAME}Service${SERVICE_INSTANCE}" 
